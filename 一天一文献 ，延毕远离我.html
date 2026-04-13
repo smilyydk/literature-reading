@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一天一文献，延毕远离我</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4f46e5',
+                        secondary: '#4338ca',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        dark: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .btn-shadow { box-shadow: 0 4px 0 0 theme('colors.secondary'); }
+            .btn-shadow:active { transform: translateY(4px); box-shadow: 0 0 0 0 theme('colors.secondary'); }
+            .achievement-popup { animation: popup 0.5s ease-out, fadeOut 0.5s ease-in 3.5s forwards; }
+            @keyframes popup {
+                0% { transform: scale(0); opacity: 0; }
+                70% { transform: scale(1.1); opacity: 1; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes fadeOut {
+                0% { transform: scale(1); opacity: 1; }
+                100% { transform: scale(0.9); opacity: 0; visibility: hidden; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans min-h-screen text-slate-800">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-primary mb-2"><i class="fa fa-book mr-3"></i>一天一文献，延毕远离我</h1>
+            <p class="text-slate-500" id="current-date-time"></p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <nav class="md:col-span-1">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sticky top-4">
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">当前打卡人</label>
+                        <select id="user-selector" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-lg rounded-lg focus:ring-primary focus:border-primary block p-2.5">
+                            <option value="user1">🐸</option>
+                            <option value="user2">🐟</option>
+                            <option value="user3">🌊</option>
+                        </select>
+                    </div>
+
+                    <ul class="space-y-2">
+                        <li>
+                            <button id="nav-submit" class="w-full text-left px-4 py-3 rounded-lg bg-primary text-white flex items-center justify-between transition-colors">
+                                <span class="font-medium">提交文献</span>
+                                <i class="fa fa-pencil-square-o"></i>
+                            </button>
+                        </li>
+                        <li>
+                            <button id="nav-feed" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors text-slate-700">
+                                <span class="font-medium">今日动态</span>
+                                <i class="fa fa-feed"></i>
+                            </button>
+                        </li>
+                        <li>
+                            <button id="nav-stats" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors text-slate-700">
+                                <span class="font-medium">统计数据</span>
+                                <i class="fa fa-pie-chart"></i>
+                            </button>
+                        </li>
+                        <li>
+                            <button id="nav-achievements" class="w-full text-left px-4 py-3 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors text-slate-700">
+                                <span class="font-medium">我的成就</span>
+                                <i class="fa fa-trophy"></i>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="mt-8 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <h3 class="font-bold text-primary mb-3">团队今日战况</h3>
+                        <div class="space-y-2 text-sm" id="team-today-status">
+                            </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main class="md:col-span-3">
+                
+                <section id="submit-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center border-b pb-4">
+                        <i class="fa fa-pencil-square-o mr-2 text-primary"></i>登记新阅读的文献
+                    </h2>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">文献标题 (Title)</label>
+                            <input type="text" id="paper-title" placeholder="例如：Integrated spatial genomics reveals..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">发表期刊 (Journal)</label>
+                                <input type="text" id="paper-journal" placeholder="例如：Nature / Bioinformatics" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">影响因子 (IF)</label>
+                                <input type="number" step="0.1" id="paper-if" placeholder="例如：15.5" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">核心摘要 (Abstract / Core Idea)</label>
+                            <textarea id="paper-abstract" rows="3" placeholder="这篇文章主要解决了什么问题？发现了什么机制？" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">简略笔记 & 启示 (Notes)</label>
+                            <textarea id="paper-notes" rows="4" placeholder="例如：使用 Seurat 和 CellChat 进行分析的思路很清晰，可以借鉴到我的组学测序数据分析流水线中..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"></textarea>
+                        </div>
+
+                        <div class="pt-4">
+                            <button id="btn-submit-paper" class="w-full bg-primary hover:bg-secondary text-white py-3 px-4 rounded-lg font-bold text-lg btn-shadow transition-all">
+                                <i class="fa fa-check-circle mr-2"></i>提交打卡
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="feed-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 hidden">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center border-b pb-4">
+                        <i class="fa fa-feed mr-2 text-primary"></i>今日文献流
+                    </h2>
+                    <div id="today-feed-container" class="space-y-6">
+                        </div>
+                </section>
+
+                <section id="stats-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 hidden">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center border-b pb-4">
+                        <i class="fa fa-pie-chart mr-2 text-primary"></i>团队阅读统计
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center" id="summary-cards">
+                        </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-slate-700 mb-4 text-center">累计阅读量对比</h3>
+                            <div class="h-64"><canvas id="chart-count"></canvas></div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <h3 class="text-lg font-bold text-slate-700 mb-4 text-center">累计吸收IF对比</h3>
+                            <div class="h-64"><canvas id="chart-if"></canvas></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="achievements-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 hidden">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 flex items-center border-b pb-4">
+                        <i class="fa fa-trophy mr-2 text-primary"></i>我的成就面板 (<span id="achieve-user-name"></span>)
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="achievements-grid">
+                        </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <div id="achievement-popup" class="fixed top-20 right-8 bg-white border-l-4 border-warning rounded-r-lg shadow-xl p-4 w-80 hidden achievement-popup z-50">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-warning rounded-full flex items-center justify-center text-white">
+                    <i class="fa fa-trophy text-lg"></i>
+                </div>
+            </div>
+            <div class="ml-3 w-0 flex-1">
+                <p class="text-sm font-bold text-slate-900">解锁新成就！</p>
+                <p class="text-base font-bold text-warning mt-1" id="popup-title">成就名称</p>
+                <p class="text-sm text-slate-500 mt-1" id="popup-desc">成就描述</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心数据配置 ---
+        // 修复了 Emoji 的配置，并为每个人分配了匹配的背景颜色
+        const USERS = {
+            'user1': { name: '🐸', color: '#10b981' }, // 绿色
+            'user2': { name: '🐟', color: '#3b82f6' }, // 蓝色
+            'user3': { name: '🌊', color: '#0ea5e9' }  // 蔚蓝
+        };
+
+        const ACHIEVEMENT_DEFS = [
+            { id: 'first_blood', name: '初窥门径', desc: '打卡第一篇文献', icon: 'fa-star', req: (stats) => stats.total >= 1 },
+            { id: 'reader_10', name: '渐入佳境', desc: '累计阅读10篇文献', icon: 'fa-book', req: (stats) => stats.total >= 10 },
+            { id: 'reader_50', name: '文献狂魔', desc: '累计阅读50篇文献', icon: 'fa-fire', req: (stats) => stats.total >= 50 },
+            { id: 'high_if', name: '顶刊捕手', desc: '阅读一篇IF > 10的文献', icon: 'fa-rocket', req: (stats) => stats.maxIf > 10 },
+            { id: 'top_journal', name: 'CNS仰望者', desc: '阅读一篇IF > 30的文献', icon: 'fa-diamond', req: (stats) => stats.maxIf > 30 },
+            { id: 'note_master', name: '笔记达人', desc: '单篇笔记超过100字', icon: 'fa-pencil', req: (stats) => stats.maxNoteLen >= 100 }
+        ];
+
+        // 状态管理
+        let appData = {
+            records: [], // { id, userId, date, time, title, journal, if, abstract, notes }
+            achievements: { user1: [], user2: [], user3: [] }
+        };
+        let charts = {};
+
+        // --- 初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            initNav();
+            initSelector();
+            updateAllViews();
+
+            document.getElementById('btn-submit-paper').addEventListener('click', submitPaper);
+        });
+
+        function loadData() {
+            const saved = localStorage.getItem('literatureTrackerData');
+            if (saved) {
+                appData = JSON.parse(saved);
+                // 兼容性检查
+                if(!appData.achievements) appData.achievements = { user1: [], user2: [], user3: [] };
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('literatureTrackerData', JSON.stringify(appData));
+        }
+
+        // --- UI 更新函数 ---
+        function updateDateTime() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long', hour: '2-digit', minute: '2-digit' };
+            document.getElementById('current-date-time').textContent = now.toLocaleDateString('zh-CN', options);
+        }
+
+        function initNav() {
+            const sections = ['submit', 'feed', 'stats', 'achievements'];
+            sections.forEach(sec => {
+                document.getElementById(`nav-${sec}`).addEventListener('click', (e) => {
+                    // 重置所有按钮样式
+                    sections.forEach(s => {
+                        const btn = document.getElementById(`nav-${s}`);
+                        btn.className = 'w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-colors hover:bg-slate-100 text-slate-700';
+                        document.getElementById(`${s}-section`).classList.add('hidden');
+                    });
+                    // 激活当前
+                    e.currentTarget.className = 'w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-colors bg-primary text-white';
+                    document.getElementById(`${sec}-section`).classList.remove('hidden');
+                    
+                    if (sec === 'stats') renderCharts();
+                    if (sec === 'feed') renderFeed();
+                });
+            });
+        }
+
+        function initSelector() {
+            const selector = document.getElementById('user-selector');
+            selector.addEventListener('change', () => {
+                renderAchievements();
+            });
+        }
+
+        function getCurrentUser() {
+            return document.getElementById('user-selector').value;
+        }
+
+        function getTodayStr() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // --- 核心业务逻辑 ---
+        function submitPaper() {
+            const userId = getCurrentUser();
+            const title = document.getElementById('paper-title').value.trim();
+            const journal = document.getElementById('paper-journal').value.trim();
+            const ifVal = parseFloat(document.getElementById('paper-if').value) || 0;
+            const abstract = document.getElementById('paper-abstract').value.trim();
+            const notes = document.getElementById('paper-notes').value.trim();
+
+            if (!title || !journal) {
+                alert('文献标题和期刊为必填项！');
+                return;
+            }
+
+            const record = {
+                id: Date.now().toString(),
+                userId,
+                date: getTodayStr(),
+                time: new Date().toLocaleTimeString('zh-CN', {hour12: false}),
+                title, journal, ifVal, abstract, notes
+            };
+
+            appData.records.unshift(record); // 加到前面
+            saveData();
+
+            // 清空表单
+            document.getElementById('paper-title').value = '';
+            document.getElementById('paper-journal').value = '';
+            document.getElementById('paper-if').value = '';
+            document.getElementById('paper-abstract').value = '';
+            document.getElementById('paper-notes').value = '';
+
+            checkAchievements(userId);
+            updateAllViews();
+            
+            // 自动跳到Feed流
+            document.getElementById('nav-feed').click();
+        }
+
+        function getUserStats(userId) {
+            const userRecords = appData.records.filter(r => r.userId === userId);
+            return {
+                total: userRecords.length,
+                maxIf: userRecords.reduce((max, r) => Math.max(max, r.ifVal), 0),
+                sumIf: userRecords.reduce((sum, r) => sum + r.ifVal, 0),
+                maxNoteLen: userRecords.reduce((max, r) => Math.max(max, r.notes.length), 0)
+            };
+        }
+
+        function checkAchievements(userId) {
+            const stats = getUserStats(userId);
+            const userAchieves = appData.achievements[userId];
+            
+            ACHIEVEMENT_DEFS.forEach(def => {
+                if (!userAchieves.includes(def.id) && def.req(stats)) {
+                    userAchieves.push(def.id);
+                    showAchievementPopup(def);
+                }
+            });
+            saveData();
+        }
+
+        function showAchievementPopup(def) {
+            const popup = document.getElementById('achievement-popup');
+            document.getElementById('popup-title').textContent = def.name;
+            document.getElementById('popup-desc').textContent = def.desc;
+            
+            popup.classList.remove('hidden');
+            // 克隆节点以重新触发动画
+            const newPopup = popup.cloneNode(true);
+            popup.parentNode.replaceChild(newPopup, popup);
+            
+            setTimeout(() => { newPopup.classList.add('hidden'); }, 4000);
+        }
+
+        // --- 视图渲染 ---
+        function updateAllViews() {
+            renderTeamStatus();
+            renderFeed();
+            renderAchievements();
+            if(!document.getElementById('stats-section').classList.contains('hidden')){
+                renderCharts();
+            }
+        }
+
+        function renderTeamStatus() {
+            const container = document.getElementById('team-today-status');
+            const todayStr = getTodayStr();
+            let html = '';
+            
+            Object.keys(USERS).forEach(uid => {
+                const count = appData.records.filter(r => r.userId === uid && r.date === todayStr).length;
+                const statusClass = count > 0 ? 'text-green-600 font-bold' : 'text-slate-500';
+                const statusText = count > 0 ? `已读 ${count} 篇` : '尚未打卡';
+                html += `
+                    <div class="flex justify-between border-b border-indigo-100 pb-1 last:border-0 items-center">
+                        <span class="text-slate-700 text-lg">${USERS[uid].name}</span>
+                        <span class="${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderFeed() {
+            const container = document.getElementById('today-feed-container');
+            const todayStr = getTodayStr();
+            const todayRecords = appData.records.filter(r => r.date === todayStr);
+
+            if (todayRecords.length === 0) {
+                container.innerHTML = '<div class="text-center py-10 text-slate-400"><i class="fa fa-coffee text-4xl mb-3 block"></i>今天还没有人打卡哦，快来做第一名吧！</div>';
+                return;
+            }
+
+            container.innerHTML = todayRecords.map(r => `
+                <div class="border border-slate-200 rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl mr-3 shadow-sm" style="background-color: ${USERS[r.userId].color}20; border: 2px solid ${USERS[r.userId].color}">
+                                ${USERS[r.userId].name}
+                            </div>
+                            <div>
+                                <span class="font-bold text-slate-800">${USERS[r.userId].name} 的打卡</span>
+                                <span class="text-xs text-slate-500 ml-2"><i class="fa fa-clock-o"></i> ${r.time}</span>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded border border-blue-100">IF: ${r.ifVal}</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 mb-1">${r.title}</h3>
+                    <p class="text-sm text-slate-500 mb-3"><i class="fa fa-bookmark-o"></i> ${r.journal}</p>
+                    
+                    ${r.abstract ? `<div class="bg-slate-50 p-3 rounded text-sm text-slate-700 mb-2 border-l-4 border-slate-300"><strong>摘要/核心：</strong>${r.abstract}</div>` : ''}
+                    ${r.notes ? `<div class="bg-yellow-50 p-3 rounded text-sm text-slate-800 border-l-4 border-warning"><strong>💡 笔记启示：</strong>${r.notes}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderAchievements() {
+            const userId = getCurrentUser();
+            document.getElementById('achieve-user-name').textContent = USERS[userId].name;
+            const container = document.getElementById('achievements-grid');
+            const userAchieves = appData.achievements[userId] || [];
+
+            container.innerHTML = ACHIEVEMENT_DEFS.map(def => {
+                const unlocked = userAchieves.includes(def.id);
+                const bgClass = unlocked ? 'bg-gradient-to-br from-warning to-yellow-600' : 'bg-slate-200';
+                const textClass = unlocked ? 'text-white' : 'text-slate-400';
+                const cardClass = unlocked ? 'border-warning shadow-md' : 'border-slate-200 opacity-70 grayscale';
+                
+                return `
+                    <div class="border rounded-xl p-4 flex items-center ${cardClass} transition-all">
+                        <div class="w-12 h-12 rounded-full ${bgClass} flex items-center justify-center text-xl mr-4 flex-shrink-0">
+                            <i class="fa ${def.icon} ${textClass}"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold ${unlocked ? 'text-slate-800' : 'text-slate-500'}">${def.name}</h4>
+                            <p class="text-xs ${unlocked ? 'text-slate-600' : 'text-slate-400'} mt-1">${def.desc}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCharts() {
+            const userKeys = Object.keys(USERS);
+            const userNames = userKeys.map(k => USERS[k].name);
+            const colors = userKeys.map(k => USERS[k].color);
+            
+            const stats = userKeys.map(uid => getUserStats(uid));
+            const counts = stats.map(s => s.total);
+            const ifs = stats.map(s => s.sumIf);
+
+            // 渲染顶部Summary Cards
+            const summaryContainer = document.getElementById('summary-cards');
+            summaryContainer.innerHTML = userKeys.map((uid, i) => `
+                <div class="bg-white border border-slate-200 p-4 rounded-lg shadow-sm border-t-4" style="border-top-color: ${colors[i]}">
+                    <h4 class="text-slate-500 text-lg font-bold mb-1">${USERS[uid].name}</h4>
+                    <div class="flex justify-center space-x-4">
+                        <div><span class="text-2xl font-bold text-slate-800">${stats[i].total}</span><span class="text-xs text-slate-500 ml-1">篇</span></div>
+                        <div><span class="text-2xl font-bold text-slate-800">${stats[i].sumIf.toFixed(1)}</span><span class="text-xs text-slate-500 ml-1">IF</span></div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 图表 1: 阅读数量
+            if(charts.count) charts.count.destroy();
+            charts.count = new Chart(document.getElementById('chart-count'), {
+                type: 'bar',
+                data: {
+                    labels: userNames,
+                    datasets: [{
+                        label: '累计阅读文献数',
+                        data: counts,
+                        backgroundColor: colors.map(c => c + '80'), // 加透明度
+                        borderColor: colors,
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            });
+
+            // 图表 2: 累计IF
+            if(charts.if) charts.if.destroy();
+            charts.if = new Chart(document.getElementById('chart-if'), {
+                type: 'bar',
+                data: {
+                    labels: userNames,
+                    datasets: [{
+                        label: '累计吸收IF值',
+                        data: ifs,
+                        backgroundColor: colors.map(c => c + '40'),
+                        borderColor: colors,
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+    </script>
+</body>
+</html>
